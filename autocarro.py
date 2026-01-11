@@ -4,11 +4,14 @@ import json
 import os
 import sys
 import time
+import urllib3
 
 URL_BUSCA = "https://m.autocarro.com.br/autobusca/carros?q=etios%201.5&ano_de=2017&preco_ate=55000&cambio=1&estado=43&categoria=3&range=100&sort=1"
 
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def enviar_telegram(carro):
@@ -48,7 +51,8 @@ def main():
     }
 
     try:
-        response = requests.get(URL_BUSCA, headers=headers, timeout=30)
+        response = requests.get(
+            URL_BUSCA, headers=headers, timeout=30, verify=False)
     except Exception as e:
         print(f"Erro de conexão: {e}")
         sys.exit(1)
