@@ -5,15 +5,13 @@ import os
 import sys
 import time
 import urllib3
+from datetime import datetime
 
-# Silenciar avisos de SSL
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# --- CONFIGURAÇÕES ---
-# Adicionei &categoria=3 (Hatch) na URL para já ajudar a filtrar na fonte
-URL_BUSCA = "https://m.autocarro.com.br/autobusca/carros?q=etios%201.5&ano_de=2016&preco_ate=65000&cambio=1&estado=43&categoria=3&sort=1"
 
-# Secrets
+URL_BUSCA = "https://m.autocarro.com.br/autobusca/carros?q=etios%201.5&ano_de=2017&preco_ate=55000&cambio=1&estado=43&categoria=3&sort=1"
+
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
@@ -32,7 +30,7 @@ def enviar_telegram(msg):
 
 
 def main():
-    print("--- Iniciando Autocarro v3 (No-Sedan + Cidades) ---")
+    print("--- Iniciando Autocarro Final (Sniper + Cidades + Separador) ---")
 
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -58,61 +56,60 @@ def main():
         data_json = json.loads(script_tag.string)
         page_props = data_json.get('props', {}).get('pageProps', {})
 
-        # 1. CRIAR O MAPA DE CIDADES (ID -> NOME)
-        # O JSON traz uma lista de todas as cidades do RS na estrutura de filtros
         mapa_cidades = {}
         try:
             lista_cidades = page_props['search']['filters']['data']['cidades']
             for c in lista_cidades:
-                # Ex: { "id_cid": 4323002, "ds_cid": "VIAMAO", ... }
                 mapa_cidades[c['id_cid']] = c['ds_cid']
-            print(
-                f"Mapa de cidades carregado: {len(mapa_cidades)} cidades conhecidas.")
+            print(f"Mapa de cidades carregado: {len(mapa_cidades)} cidades.")
         except KeyError:
-            print(
-                "Aviso: Não foi possível carregar o mapa de cidades. Os IDs serão usados.")
+            print("Aviso: Mapa de cidades indisponível.")
 
-        # 2. BUSCAR CARROS
         offers = page_props.get('offers', {})
-        lista_carros = offers.get('items', [])
+        lista_bruta = offers.get('items', [])
 
-        print(f"Total bruto encontrado: {len(lista_carros)}")
-        enviados = 0
-
-        for carro in lista_carros:
-            # Pega versão e modelo para verificar se é Sedan
+        carros_validos = []
+        for carro in lista_bruta:
             version = carro.get('version', '').upper()
             model = carro.get('model', '').upper()
             nome_completo = f"{model} {version}"
 
-            # --- FILTRO ANTI-SEDAN ---
             if 'SEDAN' in nome_completo:
-                print(f"🚫 Ignorando Sedan: {nome_completo}")
                 continue
 
-            # --- TRADUÇÃO DA CIDADE ---
-            city_id = carro.get('cityId')
-            # Tenta pegar o nome no mapa, se não achar, usa o ID mesmo
-            city_name = mapa_cidades.get(city_id, str(city_id))
+            carros_validos.append(carro)
 
-            preco = carro.get('priceCurrency', 'R$ 0')
-            year_model = carro.get('yearModel')
-            link = carro.get('link')
+        print(
+            f"Bruto: {len(lista_bruta)} | Válidos (Hatch): {len(carros_validos)}")
 
-            print(f"-> Enviando: {nome_completo} - {city_name}")
+        if len(carros_validos) > 0:
+            agora = datetime.now().strftime("%d/%m %H:%M")
+            enviar_telegram(f"🏁 <b>Resultado da Busca:</b> {agora}\n{'━'*20}")
 
-            msg = (
-                f"🚗 <b>{nome_completo}</b>\n"
-                f"💰 {preco} | 📅 {year_model}\n"
-                f"📍 Local: {city_name}\n"
-                f"🔗 <a href='{link}'>Ver Anúncio</a>"
-            )
-            enviar_telegram(msg)
-            enviados += 1
-            time.sleep(1)
+            for carro in carros_validos:
+                version = carro.get('version', '').upper()
+                model = carro.get('model', '').upper()
+                nome_completo = f"{model} {version}"
 
-        if enviados == 0:
-            print("Nenhum Hatch encontrado nos filtros.")
+                city_id = carro.get('cityId')
+                city_name = mapa_cidades.get(city_id, str(city_id))
+
+                preco = carro.get('priceCurrency', 'R$ 0')
+                year_model = carro.get('yearModel')
+                link = carro.get('link')
+
+                print(f"-> Enviando: {nome_completo} - {preco}")
+
+                msg = (
+                    f"🚗 <b>{nome_completo}</b>\n"
+                    f"💰 {preco} | 📅 {year_model}\n"
+                    f"📍 Local: {city_name}\n"
+                    f"🔗 <a href='{link}'>Ver Anúncio</a>"
+                )
+                enviar_telegram(msg)
+                time.sleep(1)
+        else:
+            print("Nenhum carro válido encontrado nesta rodada.")
 
     except Exception as e:
         print(f"❌ Erro ao processar JSON: {e}")

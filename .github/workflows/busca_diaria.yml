@@ -2,43 +2,34 @@ name: Sniper de Etios 🎯
 
 on:
   schedule:
-    # Roda todos os dias às 08:00, 12:00 e 18:00 (Horário BR aprox)
-    - cron: "0 11,15,21 * * *"
-  workflow_dispatch: # Permite rodar manualmente clicando no botão "Run workflow"
+    - cron: "0 15,21 * * *"
+  workflow_dispatch:
 
 jobs:
   buscar:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Baixa seu código do GitHub para a máquina virtual
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      # 2. Instala o Python 3.10
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
-      # 3. Instala as bibliotecas necessárias
       - name: Instalar Dependências
         run: pip install requests beautifulsoup4
 
-      # 4. Roda o Autocarro (Script que fizemos antes)
       - name: 🔎 Rodar Autocarro
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python autocarro.py
 
-      # 5. Roda Webmotors
-      # IMPORTANTE: "continue-on-error: true"
-      # Como a Webmotors tem proteção forte, às vezes o script pode falhar.
-      # Com essa linha, se falhar, o GitHub avisa mas não marca tudo como erro crítico.
-      - name: 🔎 Rodar Webmotors
-        continue-on-error: true
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python webmotors.py
+    #   - name: 🔎 Rodar Webmotors
+    #     continue-on-error: true
+    #     env:
+    #       TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+    #       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    #     run: python webmotors.py
