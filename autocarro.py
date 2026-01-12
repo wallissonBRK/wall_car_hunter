@@ -5,7 +5,7 @@ import os
 import sys
 import time
 import urllib3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -83,8 +83,10 @@ def main():
             f"Bruto: {len(lista_bruta)} | Válidos (Hatch): {len(carros_validos)}")
 
         if len(carros_validos) > 0:
-            agora = datetime.now().strftime("%d/%m %H:%M")
-            enviar_telegram(f"🏁 <b>Resultado da Busca:</b> {agora}\n{'━'*20}")
+            fuso_brasil = datetime.now() - timedelta(hours=3)
+            agora_formatada = fuso_brasil.strftime("%d/%m %H:%M")
+            enviar_telegram(
+                f"🏁🏁🏁 <b>Resultado da Busca:</b> {agora_formatada}\n{'━'*50}")
 
             for carro in carros_validos:
                 version = carro.get('version', '').upper()
