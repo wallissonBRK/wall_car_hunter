@@ -1,23 +1,25 @@
 from curl_cffi import requests
+import json
 import os
 import sys
 import time
 from datetime import datetime, timedelta
 
+# --- CONFIGURAÇÃO ---
 URL_API = "https://www.webmotors.com.br/api/search/car?url=https:%2F%2Fwww.webmotors.com.br%2Fcarros%2Frs%3Fautocomplete%3Detios%26autocompleteTerm%3DTOYOTA%2520ETIOS%26lkid%3D1705%26tipoveiculo%3Dcarros%26estadocidade%3DRio%2520Grande%2520do%2520Sul%26marca1%3DTOYOTA%26modelo1%3DETIOS%26versao1%3D1.5%2520X%2520PLUS%252016V%2520FLEX%25204P%2520MANUAL%26marca2%3DTOYOTA%26modelo2%3DETIOS%26versao2%3D1.5%2520XLS%252016V%2520FLEX%25204P%2520MANUAL%26marca3%3DTOYOTA%26modelo3%3DETIOS%26versao3%3D1.5%2520XS%252016V%2520FLEX%25204P%2520MANUAL%26page%3D1%26anode%3D2016%26cambio%3DManual%26precoate%3D65000&displayPerPage=24&actualPage=1&showMenu=true&showCount=true&showBreadCrumb=true&order=1&mediaZeroKm=true"
 
+# Secrets
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
 
 def enviar_telegram(msg):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print(f" [!] Sem config de Telegram. Msg seria: {msg}")
         return
-
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {'chat_id': TELEGRAM_CHAT_ID, 'text': msg, 'parse_mode': 'HTML'}
     try:
+        # Usamos requests normal pro Telegram (ele não bloqueia)
         import requests as req_normal
         req_normal.post(url, data=payload)
     except Exception as e:
@@ -25,24 +27,25 @@ def enviar_telegram(msg):
 
 
 def main():
-    print("--- Iniciando Webmotors v3 (CURL Impersonate) ---")
+    print("--- Iniciando Webmotors v4 (Minimalista) ---")
 
+    # Deixamos o curl_cffi gerenciar os headers. Passamos só o Referer.
     headers = {
-        'authority': 'www.webmotors.com.br',
-        'accept': 'application/json, text/plain, */*',
-        'referer': 'https://www.webmotors.com.br/',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'referer': 'https://www.webmotors.com.br/carros/rs?autocomplete=etios&perfil=carros&modelo=etios'
     }
 
     try:
+        # Trocamos para chrome110 para variar a assinatura digital
         response = requests.get(URL_API, headers=headers,
-                                timeout=30, impersonate="chrome120")
+                                timeout=30, impersonate="chrome110")
     except Exception as e:
         print(f"Erro fatal de conexão: {e}")
         sys.exit(1)
 
     if response.status_code != 200:
         print(f"Erro Webmotors: {response.status_code}")
+        # Debug: Mostrar o início do HTML de erro para ver quem bloqueou
+        print(f"Conteúdo do bloqueio: {response.text[:200]}...")
         sys.exit(1)
 
     try:
