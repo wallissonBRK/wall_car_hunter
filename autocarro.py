@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+# CONFIGURAÇÕES
 URL_BUSCA = "https://m.autocarro.com.br/autobusca/carros?q=etios%201.5&ano_de=2016&preco_ate=65000&cambio=1&estado=43&sort=1"
 
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
@@ -55,7 +56,7 @@ def limpar_preco(preco_str):
 
 
 def main():
-    print("--- Iniciando Autocarro (Com Monitoramento de Preço) ---")
+    print("--- Iniciando Autocarro (Relatório Completo) ---")
 
     memoria = carregar_memoria()
     nova_memoria = memoria.copy()
@@ -129,33 +130,32 @@ def main():
                 nova_memoria[car_id] = preco_float
 
             else:
-                pass
+                status_aviso = "⚪ Preço Mantido"
 
-            if status_aviso:
-                city_id = carro.get('cityId')
-                city_name = mapa_cidades.get(city_id, str(city_id))
-                year_model = carro.get('yearModel')
+            city_id = carro.get('cityId')
+            city_name = mapa_cidades.get(city_id, str(city_id))
+            year_model = carro.get('yearModel')
 
-                print(f"-> Preparando envio: {status_aviso} - {nome_completo}")
+            print(f"-> Preparando envio: {status_aviso} - {nome_completo}")
 
-                msg = (
-                    f"{status_aviso}\n"
-                    f"🚗 <b>{nome_completo}</b>\n"
-                    f"💰 {preco_visual} | 📅 {year_model}\n"
-                    f"📍 Local: {city_name}\n"
-                    f"🔗 <a href='{link}'>Ver Anúncio</a>"
-                )
-                msgs_para_enviar.append(msg)
+            msg = (
+                f"{status_aviso}\n"
+                f"🚗 <b>{nome_completo}</b>\n"
+                f"💰 {preco_visual} | 📅 {year_model}\n"
+                f"📍 Local: {city_name}\n"
+                f"🔗 <a href='{link}'>Ver Anúncio</a>"
+            )
+            msgs_para_enviar.append(msg)
 
         print(
-            f"Bruto: {len(lista_bruta)} | Atualizações: {len(msgs_para_enviar)}")
+            f"Bruto: {len(lista_bruta)} | Para Enviar: {len(msgs_para_enviar)}")
 
         if len(msgs_para_enviar) > 0:
             fuso_brasil = datetime.now() - timedelta(hours=3)
             agora_formatada = fuso_brasil.strftime("%d/%m %H:%M")
 
             enviar_telegram(
-                f"🏁 <b>Atualização Autocarro:</b> {agora_formatada}\n{'━'*30}")
+                f"🏁 <b>Relatório Diário:</b> {agora_formatada}\n{'━'*60}")
 
             for m in msgs_para_enviar:
                 enviar_telegram(m)
@@ -164,7 +164,7 @@ def main():
             salvar_memoria(nova_memoria)
             print("Memória de preços atualizada com sucesso.")
         else:
-            print("Nenhuma alteração de preço ou carro novo encontrado.")
+            print("Nenhum carro encontrado nos filtros.")
 
     except Exception as e:
         print(f"❌ Erro ao processar JSON: {e}")
