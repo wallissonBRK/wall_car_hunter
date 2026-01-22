@@ -9,6 +9,9 @@ jobs:
   buscar:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
@@ -26,3 +29,13 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python autocarro.py
+
+      - name: Commit e Push da Memória
+        run: |
+          git config --global user.name 'Sniper Bot'
+          git config --global user.email 'bot@noreply.github.com'
+          # Tenta adicionar o arquivo de memória
+          git add price_memory.json
+          # Só faz o commit se houver mudança
+          git commit -m "Atualizando histórico de preços 📈" || exit 0
+          git push
