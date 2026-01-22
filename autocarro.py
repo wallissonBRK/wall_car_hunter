@@ -155,7 +155,7 @@ def main():
             agora_formatada = fuso_brasil.strftime("%d/%m %H:%M")
 
             enviar_telegram(
-                f"🏁 <b>Relatório Diário:</b> {agora_formatada}\n{'━'*60}")
+                f"🏁 <b>Relatório Diário:</b> {agora_formatada}\n{'━'*50}")
 
             for m in msgs_para_enviar:
                 enviar_telegram(m)
