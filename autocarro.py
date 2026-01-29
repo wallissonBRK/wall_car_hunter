@@ -7,28 +7,24 @@ import time
 import urllib3
 from datetime import datetime, timedelta
 
+# services
+from services.fipe_service import obter_valor_fipe
+from services.telegram_service import enviar_telegram
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # CONFIGURAÇÕES
 URL_BUSCA = "https://m.autocarro.com.br/autobusca/carros?q=etios%201.5&ano_de=2016&preco_ate=65000&cambio=1&estado=43&sort=1"
 
-TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
-TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
+#TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
+TELEGRAM_TOKEN = "8576961684:AAFC-iDF6_0O09NEnkXXYTnRDCJWY1k7ra8"
+#TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
+TELEGRAM_CHAT_ID = "7556703507"
 
 ARQUIVO_MEMORIA = "price_memory.json"
 
 
-def enviar_telegram(msg):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print(f" [!] Sem config de Telegram. Msg seria: {msg}")
-        return
-
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {'chat_id': TELEGRAM_CHAT_ID, 'text': msg, 'parse_mode': 'HTML'}
-    try:
-        requests.post(url, data=payload)
-    except Exception as e:
-        print(f"Erro Telegram: {e}")
+# enviar_telegram moved to services/telegram_service.py
 
 
 def carregar_memoria():
@@ -53,6 +49,11 @@ def limpar_preco(preco_str):
         return float(limpo)
     except:
         return 0.0
+
+
+# Consulta FIPE usando a API pública (parallelum). Há cache em memória para
+# reduzir o número de chamadas em uma mesma execução.
+# obter_valor_fipe moved to services/fipe_service.py
 
 
 def main():
@@ -137,14 +138,33 @@ def main():
             year_model = carro.get('yearModel')
 
             print(f"-> Preparando envio: {status_aviso} - {nome_completo}")
+            # Busca valor FIPE (pode demorar um pouco na primeira execução)
+            try:
+                fipe_info = obter_valor_fipe(model, version, year_model)
+            except Exception:
+                fipe_info = None
+
+            # imprimir no console a fonte encontrada para facilitar debug
+            if fipe_info and isinstance(fipe_info, dict):
+                print(f"   -> FIPE encontrado: {fipe_info.get('valor')} | fonte: {fipe_info.get('fonte')} | marca: {fipe_info.get('marca')} | modelo FIPE: {fipe_info.get('modelo_fipe')} | ano: {fipe_info.get('ano_nome')}")
+                fipe_text = f"{fipe_info.get('valor')}"
+                fipe_fonte = fipe_info.get('fonte')
+            else:
+                print("   -> FIPE: N/D")
+                fipe_text = None
+                fipe_fonte = None
 
             msg = (
                 f"{status_aviso}\n"
                 f"🚗 <b>{nome_completo}</b>\n"
                 f"💰 {preco_visual} | 📅 {year_model}\n"
+                f"💸 FIPE: {fipe_text or 'N/D'}\n"
                 f"📍 Local: {city_name}\n"
                 f"🔗 <a href='{link}'>Ver Anúncio</a>"
             )
+            # se há fonte FIPE, adicionar ao final da mensagem (opcional)
+            if fipe_fonte:
+                msg = msg + f"\n🔗 Fonte FIPE: {fipe_fonte}"
             msgs_para_enviar.append(msg)
 
         print(
@@ -155,10 +175,10 @@ def main():
             agora_formatada = fuso_brasil.strftime("%d/%m %H:%M")
 
             enviar_telegram(
-                f"🏁 <b>Relatório Diário:</b> {agora_formatada}\n{'━'*50}")
+                f"🏁 <b>Relatório Diário:</b> {agora_formatada}\n{'━'*50}", TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
 
             for m in msgs_para_enviar:
-                enviar_telegram(m)
+                enviar_telegram(m, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
                 time.sleep(1)
 
             salvar_memoria(nova_memoria)
