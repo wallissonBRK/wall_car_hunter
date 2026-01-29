@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 # services
 from services.fipe_service import obter_valor_fipe
 from services.telegram_service import enviar_telegram
+from services.supabase_service import SupabaseService as DatabaseService
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -58,6 +59,9 @@ def limpar_preco(preco_str):
 
 def main():
     print("--- Iniciando Autocarro (Relatório Completo) ---")
+
+    # Inicializar banco de dados
+    db = DatabaseService()
 
     memoria = carregar_memoria()
     nova_memoria = memoria.copy()
@@ -149,10 +153,16 @@ def main():
                 print(f"   -> FIPE encontrado: {fipe_info.get('valor')} | fonte: {fipe_info.get('fonte')} | marca: {fipe_info.get('marca')} | modelo FIPE: {fipe_info.get('modelo_fipe')} | ano: {fipe_info.get('ano_nome')}")
                 fipe_text = f"{fipe_info.get('valor')}"
                 fipe_fonte = fipe_info.get('fonte')
+                marca = fipe_info.get('marca')
+                modelo_fipe = fipe_info.get('modelo_fipe')
+                ano_fipe = fipe_info.get('ano_nome')
             else:
                 print("   -> FIPE: N/D")
                 fipe_text = None
                 fipe_fonte = None
+                marca = None
+                modelo_fipe = None
+                ano_fipe = None
 
             msg = (
                 f"{status_aviso}\n"
@@ -166,6 +176,25 @@ def main():
             if fipe_fonte:
                 msg = msg + f"\n🔗 Fonte FIPE: {fipe_fonte}"
             msgs_para_enviar.append(msg)
+
+            # Salvar no banco de dados
+            dados_anuncio = {
+                'car_id': car_id,
+                'full_name': nome_completo,
+                'price_display': preco_visual,
+                'price_numeric': preco_float,
+                'model_year': year_model,
+                'fipe_value': fipe_text,
+                'fipe_source': fipe_fonte,
+                'brand': marca,
+                'fipe_model': modelo_fipe,
+                'fipe_year': ano_fipe,
+                'city_name': city_name,
+                'listing_url': link,
+                'status': status_aviso,
+                'listing_date': datetime.now()
+            }
+            db.salvar_anuncio(dados_anuncio)
 
         print(
             f"Bruto: {len(lista_bruta)} | Para Enviar: {len(msgs_para_enviar)}")
