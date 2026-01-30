@@ -21,8 +21,9 @@ jobs:
     - name: 📦 Instalar Dependências (VERSÕES FIXAS)
       run: |
         pip install --upgrade pip
-        pip install "supabase==2.9.1" "gotrue==2.9.0" "httpx==0.27.2"  # Fix proxy bug
-        pip install requests beautifulsoup4 python-telegram-bot==21.0
+        pip install "python-dotenv==1.0.1"
+        pip install "supabase==2.9.1" "gotrue==2.9.0" "httpx==0.27.2"
+        pip install requests beautifulsoup4 "python-telegram-bot==21.0.1"
 
     - name: 🔎 Rodar Sniper
       env:
