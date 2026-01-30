@@ -1,41 +1,35 @@
-name: Sniper de Etios 🎯
+name: Sniper de Carros 🎯
 
 on:
   schedule:
-    - cron: "0 15,21 * * *"
-  workflow_dispatch:
+    - cron: "0 9,15,21 * * *"  # 9h, 15h, 21h (3x/dia)
+  workflow_dispatch:  # Trigger manual
 
 jobs:
-  buscar:
+  sniper:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-
     steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
+    - name: 📥 Checkout do código
+      uses: actions/checkout@v4
 
-      - name: Configurar Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
+    - name: 🐍 Configurar Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
 
-      - name: Instalar Dependências
-        run: pip install requests beautifulsoup4
+    - name: 📦 Instalar Dependências
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
-      - name: 🔎 Rodar Autocarro
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python autocarro.py
+    - name: 🔎 Rodar Sniper Autocarro
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: python autocarro.py
 
-      - name: Commit e Push da Memória
-        run: |
-          git config --global user.name 'Sniper Bot'
-          git config --global user.email 'bot@noreply.github.com'
-          # Tenta adicionar o arquivo de memória
-          git add price_memory.json
-          # Só faz o commit se houver mudança
-          git commit -m "Atualizando histórico de preços 📈" || exit 0
-          git push
+    - name: 📊 Log Final
+      run: echo "Sniper executado com sucesso! ✅"
